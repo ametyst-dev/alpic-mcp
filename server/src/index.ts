@@ -140,10 +140,10 @@ const server = new McpServer(
           isError: true,
         };
       }
-      const data = await res.json() as { id: string; status: string; spent: number };
+      const data = await res.json() as { id: string; status: string; spent: number; spending_limit: number };
       return {
-        structuredContent: { walletId: data.id, status: data.status, spent: data.spent },
-        content: [{ type: "text", text: `Wallet ${data.id}: ${data.status} (spent: ${data.spent})` }],
+        structuredContent: { walletId: data.id, status: data.status, spent: data.spent, spendingLimit: data.spending_limit },
+        content: [{ type: "text", text: `Wallet ${data.id}: ${data.status} (spent: ${data.spent}/${data.spending_limit})` }],
       };
     },
   )

@@ -353,6 +353,7 @@ function AmetystConsole() {
   const [apiKeyDraft, setApiKeyDraft] = useState(input?.prefillApiKey ?? "");
   const [accessAmount, setAccessAmount] = useState("");
   const [walletStatus, setWalletStatus] = useState<"pending" | "approved" | "rejected" | null>(null);
+  const [walletBalance, setWalletBalance] = useState<{ balance: number; spendingLimit: number } | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
 
   // Tool hooks
@@ -407,10 +408,13 @@ function AmetystConsole() {
     if (apiKey) getBalance({ apiKey });
   }, [apiKey]);
 
-  // After a service run completes, reload balance and prompt the LLM to relay the result
+  // After a service run completes, update balance from remaining and prompt the LLM to relay the result
   useEffect(() => {
     if (ran) {
-      getBalance({ ...(apiKey ? { apiKey } : {}) });
+      const sc = runData?.structuredContent as { remaining?: number } | undefined;
+      if (sc?.remaining != null) {
+        setWalletBalance((prev) => prev ? { ...prev, balance: sc.remaining! } : null);
+      }
       sendFollowUp(
         "The service returned results via the tool call above. Present the actual content from the results to the user — include titles, URLs, and the full text of each snippet exactly as returned. Do not paraphrase or summarise; output the real data."
       );
@@ -428,19 +432,23 @@ function AmetystConsole() {
     }
   }, [accessSent]);
 
-  // Update walletStatus when check-wallet responds; reload balance on approval
+  // Update walletStatus and balance when check-wallet responds
   useEffect(() => {
     if (!checkWalletData) return;
-    const status = (checkWalletData.structuredContent as { status?: string }).status;
-    if (status === "approved" || status === "rejected") {
-      setWalletStatus(status);
-      if (status === "approved") getBalance({ ...(apiKey ? { apiKey } : {}) });
+    const sc = checkWalletData.structuredContent as { status?: string; spent?: number; spendingLimit?: number } | undefined;
+    const status = sc?.status;
+    if (status === "approved" || status === "rejected" || status === "pending") {
+      setWalletStatus(status as "pending" | "approved" | "rejected");
+    }
+    if (sc?.spendingLimit != null && sc?.spent != null) {
+      setWalletBalance({ balance: sc.spendingLimit - sc.spent, spendingLimit: sc.spendingLimit });
     }
   }, [checkWalletData]);
 
   const services: Service[] = servicesData?.structuredContent?.services ?? [];
   const selected = services.find((s) => s.id === selectedServiceId) ?? null;
   const bal = (balanceData?.structuredContent as { balance: number; currency: string; spendingLimit: number } | undefined) ?? null;
+  const effectiveBal = bal ?? (walletBalance ? { balance: walletBalance.balance, currency: "credits", spendingLimit: walletBalance.spendingLimit } : null);
 
   const togglePanel = (p: Panel) =>
     setOpenPanel((prev) => (prev === p ? null : p));
@@ -454,8 +462,8 @@ function AmetystConsole() {
 
   // Spending bar
   const spendPct =
-    bal ? Math.min(100, Math.round((1 - bal.balance / bal.spendingLimit) * 100)) : 0;
-  const remaining = bal ? bal.balance : null;
+    effectiveBal ? Math.min(100, Math.round((1 - effectiveBal.balance / effectiveBal.spendingLimit) * 100)) : 0;
+  const remaining = effectiveBal ? effectiveBal.balance : null;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -486,8 +494,8 @@ function AmetystConsole() {
             style={s.pill(openPanel === "balance")}
             onClick={() => togglePanel("balance")}
           >
-            {bal
-              ? `${bal.balance.toLocaleString()} ${bal.currency}`
+            {effectiveBal
+              ? `${effectiveBal.balance.toLocaleString()} ${effectiveBal.currency}`
               : balanceLoading
               ? "…"
               : "Balance"}
@@ -508,10 +516,10 @@ function AmetystConsole() {
       </div>
 
       {/* ── Spending strip ─────────────────────────────────────────────────── */}
-      {bal && (
+      {effectiveBal && (
         <div style={s.spendingStrip}>
           <span style={{ color: tk.muted, fontSize: "11px", whiteSpace: "nowrap" }}>
-            {remaining!.toLocaleString()} {bal.currency} available
+            {remaining!.toLocaleString()} {effectiveBal!.currency} available
           </span>
           <div style={s.progressTrack}>
             <div
@@ -525,7 +533,7 @@ function AmetystConsole() {
             />
           </div>
           <span style={{ color: tk.muted, fontSize: "11px", whiteSpace: "nowrap" }}>
-            {bal.spendingLimit.toLocaleString()} limit
+            {effectiveBal.spendingLimit.toLocaleString()} limit
           </span>
         </div>
       )}
@@ -534,21 +542,21 @@ function AmetystConsole() {
 
       {openPanel === "balance" && (
         <div style={s.panel}>
-          {bal ? (
+          {effectiveBal ? (
             <div>
               <div style={{ display: "flex", gap: "16px", marginBottom: "4px" }}>
                 <div>
                   <div style={{ fontSize: "11px", color: tk.muted }}>Available</div>
                   <div style={{ fontSize: "20px", fontWeight: 700, color: tk.accent }}>
-                    {bal.balance.toLocaleString()}
-                    <span style={{ fontSize: "12px", color: tk.muted, marginLeft: "3px" }}>{bal.currency}</span>
+                    {effectiveBal.balance.toLocaleString()}
+                    <span style={{ fontSize: "12px", color: tk.muted, marginLeft: "3px" }}>{effectiveBal.currency}</span>
                   </div>
                 </div>
                 <div>
                   <div style={{ fontSize: "11px", color: tk.muted }}>Spend limit</div>
                   <div style={{ fontSize: "20px", fontWeight: 700, color: tk.textMid }}>
-                    {bal.spendingLimit.toLocaleString()}
-                    <span style={{ fontSize: "12px", color: tk.muted, marginLeft: "3px" }}>{bal.currency}</span>
+                    {effectiveBal.spendingLimit.toLocaleString()}
+                    <span style={{ fontSize: "12px", color: tk.muted, marginLeft: "3px" }}>{effectiveBal.currency}</span>
                   </div>
                 </div>
               </div>
@@ -599,7 +607,7 @@ function AmetystConsole() {
               <button
                 style={{ ...s.btnPrimary(checkingWallet), whiteSpace: "nowrap" }}
                 disabled={checkingWallet}
-                onClick={() => checkWallet({ walletId: walletId! })}
+                onClick={() => { if (walletId) checkWallet({ walletId }); }}
               >
                 {checkingWallet ? "Checking…" : "Check Status"}
               </button>
