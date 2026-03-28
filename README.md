@@ -19,9 +19,6 @@ From the widget, users can:
 3. **Run a service** — select a service, type a query, hit Run. The result is injected back into the conversation via `useSendFollowUpMessage` so the LLM can continue the workflow
 4. **Request access** — submit a credit or access request without leaving the chat
 
-### EXA Search integration
-
-The service catalog includes **EXA Search**, wired to the Ametyst merchant on Railway (`alpic-mor-production.up.railway.app`). The server tries the real merchant endpoint first; if it is not yet available, it falls back to a mock response automatically. No config change needed when the real endpoint goes live.
 
 ---
 
