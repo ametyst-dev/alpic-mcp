@@ -447,7 +447,8 @@ function AmetystConsole() {
 
   const services: Service[] = servicesData?.structuredContent?.services ?? [];
   const selected = services.find((s) => s.id === selectedServiceId) ?? null;
-  const bal = (balanceData?.structuredContent as { balance: number; currency: string; spendingLimit: number } | undefined) ?? null;
+  const rawBal = balanceData?.structuredContent as { balance?: number; currency?: string; spendingLimit?: number } | undefined;
+  const bal = (rawBal?.balance != null && rawBal?.currency && rawBal?.spendingLimit != null) ? { balance: rawBal.balance, currency: rawBal.currency, spendingLimit: rawBal.spendingLimit } : null;
   const effectiveBal = bal ?? (walletBalance ? { balance: walletBalance.balance, currency: "credits", spendingLimit: walletBalance.spendingLimit } : null);
 
   const togglePanel = (p: Panel) =>
