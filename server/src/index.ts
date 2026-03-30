@@ -21,6 +21,7 @@ const server = new McpServer(
       description: "Ametyst Console",
       _meta: {
         ui: {
+          domain: "bcc3ca90ac7694442d9c24f94386c60d.claudemcpcontent.com",
           csp: {
             connectDomains: ["https://api.ametyst.ai", BASE_URL],
           },
