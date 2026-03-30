@@ -440,8 +440,10 @@ function AmetystConsole() {
     if (status === "approved" || status === "rejected" || status === "pending") {
       setWalletStatus(status as "pending" | "approved" | "rejected");
     }
-    if (sc?.spendingLimit != null && sc?.spent != null) {
+    if (status === "approved" && sc?.spendingLimit != null && sc?.spent != null) {
       setWalletBalance({ balance: sc.spendingLimit - sc.spent, spendingLimit: sc.spendingLimit });
+    } else if (status !== "approved") {
+      setWalletBalance(null);
     }
   }, [checkWalletData]);
 
