@@ -394,7 +394,15 @@ function AmetystConsole() {
   } = useCallTool("check-wallet");
 
   const sendFollowUp = useSendFollowUpMessage();
+  const [copied, setCopied] = useState(false);
 
+  const copyOutput = (output: unknown) => {
+    const text = typeof output === "string" ? output : JSON.stringify(output, null, 2);
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   // Reset field values when selected service changes
   useEffect(() => { setFieldValues({}); }, [selectedServiceId]);
@@ -907,8 +915,24 @@ function AmetystConsole() {
                   ) : (
                     <div style={s.outputBox}>{formatToolOutput(output)}</div>
                   )}
-                  <div style={{ fontSize: "11px", color: tk.muted, marginTop: "4px" }}>
-                    Sending results to chat…
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px" }}>
+                    <div style={{ fontSize: "11px", color: tk.muted }}>
+                      Sending results to chat…
+                    </div>
+                    <button
+                      onClick={() => copyOutput(output)}
+                      style={{
+                        fontSize: "11px",
+                        padding: "3px 8px",
+                        borderRadius: tk.radiusSm,
+                        border: `1px solid ${tk.border}`,
+                        background: copied ? tk.accent : tk.surface,
+                        color: copied ? "#fff" : tk.text,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {copied ? "Copied!" : "Copy"}
+                    </button>
                   </div>
                 </div>
               );
