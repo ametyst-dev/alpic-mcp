@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "skybridge dev",
-    "build": "skybridge build",
+    "build": "node scripts/patch-skybridge.js && skybridge build",
     "start": "skybridge start",
     "deploy": "alpic deploy",
     "postinstall": "node scripts/patch-skybridge.js"
